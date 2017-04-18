@@ -1,12 +1,12 @@
 module Csp
 
-
 open System
 
 type Variables         = string list 
 
 (*Scope is a tuple of variables that participate in the constraint*)
-and Scope              = string * string
+[StructuralEqualityAttribute,StructuralComparisonAttribute]
+type Scope              = string * string
 (*every list in Domain coresponds to a Variable *)
 and Domain<'d>         = list<'d>
 (* a relation can be expressed explicitely *)
@@ -20,41 +20,44 @@ and ConstraintImpl<'a> = Scope * ('a -> 'a -> bool)
 (* a costraint satisfaction problem can be modelled as triple CSP(X,D,C) where *)
 (*X is a set of variables, D a set of domains for each variable and
 C a set of constraints*)
-type Csp  = { x : Variables ; d: Domain<int> list; c: ConstraintExpl<int> list}
-type Csp2 = { x2 : Variables ; d2: Domain<int> list; c2: ConstraintImpl<int> list }
-
+//type CspI  = { x : Variables ; d: Domain<int> list; c: ConstraintExpl<int> list}
+type CspExpl = { x0 : Variables ; d0: Domain<int> list; c0: ConstraintExpl<int> list }
+(* a more general version of CSP where 'a is the domain type and 'b  *)
+type Csp<'a> = { x : Variables ; d: Domain<'a> list; c: ConstraintImpl<'a> list}
 type Arc = string * string
 
 module CspExamples = 
-  let ex01Expl = {x = ["A";"B"]
-                ; d = [[1;2];[1;2]]
-                ; c = [("A","B"),[(1,2);(2,1)]] }
+  let ex01Expl = {x0 = ["A";"B"]
+                ; d0 = [[1;2];[1;2]]
+                ; c0 = [("A","B"),[(1,2);(2,1)]] }
   
-  let ex01Impl = {x2 = ["A";"B"]; d2 = [[1;2];[1;2]]; c2 = [("A","B") , fun a b -> a <> b] }
+  let ex01Impl = {x = ["A";"B"]; d = [[1;2];[1;2]]; c = [("A","B") , fun a b -> a <> b] }
   // constraint Y = X^2
-  let ex02Expl = {x = ["X";"Y"]
+  let ex02Expl = {x0 = ["X";"Y"]
+                 ;d0 = [[0;1;2;3];[0;1;4;9]]
+                 ;c0 = [(("X","Y"),[(0,0);(1,1);(2,4);(3,9)])]}
+  let ex02Impl = {x = ["X";"Y"]
                  ;d = [[0;1;2;3];[0;1;4;9]]
-                 ;c = [(("X","Y"),[(0,0);(1,1);(2,4);(3,9)])]}
-  let ex02Impl = {x2 = ["X";"Y"]
-                 ;d2 = [[0;1;2;3];[0;1;4;9]]
-                 ;c2 = [("X","Y"), fun x y -> y = x*x ] }
-  type MapColoring = { V : Variables ; D: Domain<string> list; C: ConstraintImpl<int> list }
-  let notEq = fun a b -> (a <> b) 
-  let mapColCsp = { V =["WA";"NT";"Q";"NSW";"V";"SA";"T"]
-                    ;D = List.replicate 7 ["red";"green";"blue"]
-                    ;C = [("SA","WA"), notEq;("SA","NT"), notEq 
-                    ;("SA","Q"), notEq; ("SA","NSW"), notEq
-                    ;("SA","V"), notEq; ("WA","NT"), notEq
-                    ;("NT","Q"), notEq; ("Q","NSW"), notEq
-                    ;("NSW","V"), notEq ]}
-let getArcs (csp: Csp) : Arc list = 
-  let {x = X; d = D; c = C} = csp
-  [("A","B");("C","D")]
+                 ;c = [("X","Y"), fun x y -> y = x*x ] }
+
+  //type MapColoring = { V : Variables ; D: Domain<string> list; C: ConstraintImpl<int> list }
+  
+ 
+  let notEq = ( <> )
+  let mapColCsp: Csp<string> = 
+    { x =["WA";"NT";"Q";"NSW";"V";"SA";"T"]
+     ;d = List.replicate 7 ["red";"green";"blue"]
+     ;c = [("SA","WA"), notEq;("SA","NT"), notEq 
+     ;("SA","Q"), notEq; ("SA","NSW"), notEq
+     ;("SA","V"), notEq; ("WA","NT"), notEq
+     ;("NT","Q"), notEq; ("Q","NSW"), notEq
+     ;("NSW","V"), notEq ]}  
+let getArcs (csp: Csp<'a>) : Arc list = List.map(fun (tup, fn) -> tup) csp.c
 
 ///Arc consistency,reduce the domain of variables mantaining arc consistency
 ///of the whole CSP
 
-let AC3 (csp: Csp) : bool = 
+let AC3 (csp: Csp<'a>) : bool = 
   let {x = xs; d = ds; c = cs} = csp
   let queue : Arc list = []
   //queue of arcs that contains all the arcs in csp
