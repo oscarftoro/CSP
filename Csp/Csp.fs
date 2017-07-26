@@ -8,7 +8,7 @@ type Variables         = string list
 [StructuralEqualityAttribute,StructuralComparisonAttribute]
 type Scope              = string * string
 (*every list in Domain coresponds to a Variable *)
-and Domain<'d>         = list<'d>
+and Domains<'d>         = list<'d>
 (* a relation can be expressed explicitely *)
 (* for instance ((X_1,X_2),[(A,B),(B,A)])*)
 (*where X_1 and X_2 are Variables and {A,B} Domains*)
@@ -21,9 +21,9 @@ and ConstraintImpl<'a> = Scope * ('a -> 'a -> bool)
 (*X is a set of variables, D a set of domains for each variable and
 C a set of constraints*)
 //type CspI  = { x : Variables ; d: Domain<int> list; c: ConstraintExpl<int> list}
-type CspExpl = { x0 : Variables ; d0: Domain<int> list; c0: ConstraintExpl<int> list }
+type CspExpl = { x0 : Variables ; d0: Domains<int> list; c0: ConstraintExpl<int> list }
 (* a more general version of CSP where 'a is the domain type and 'b  *)
-type Csp<'a> = { x : Variables ; d: Domain<'a> list; c: ConstraintImpl<'a> list}
+type Csp<'a> = { x : Variables ; d: Domains<'a> list; c: ConstraintImpl<'a> list}
 type Arc = string * string
 
 module CspExamples = 
@@ -57,11 +57,28 @@ let getArcs (csp: Csp<'a>) : Arc list = List.map(fun (tup, fn) -> tup) csp.c
 ///Arc consistency,reduce the domain of variables mantaining arc consistency
 ///of the whole CSP
 
-let AC3 (csp: Csp<'a>) : bool = 
-  let {x = xs; d = ds; c = cs} = csp
-  let queue : Arc list = []
-  //queue of arcs that contains all the arcs in csp
+//Mackworth's AC-3 algorithm
+let revise(csp: Csp<'a>, xi:string, xj:string): bool =
   true
+let AC3 (csp: Csp<'a>) : bool = 
+  //lookup table (key,value) = (var,domain)
+  let domains = List.zip csp.x csp.d |> dict 
+  let queue : Arc list = getArcs csp//queue of arcs that contains all the arcs in csp
+  
+  let rec queueNonEmpty (q: Arc List) doms (result:bool): bool =
+    match q with
+    |(xi,xj)::tl -> 
+      if revise(csp,xi,xj) then 
+        if ((domains.Item xi) |> List.isEmpty) then false else 
+          let newq = List.pick(fun (i,j) -> 
+            match (i,j) with
+            | (i,j) when i = xi -> Some (i,j)
+            | _ -> None ) tl
+          (queueNonEmpty newq doms result)
+      else true
+    | [] -> result
+    
+  queueNonEmpty queue domains false
 
 [<EntryPoint>]
 let main argv =
